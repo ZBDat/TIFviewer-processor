@@ -1,5 +1,6 @@
 <template>
   <div class="node" :class="[kindClass, { active: data.active }]" @click="onClickNode">
+    <button class="delete-btn" type="button" @click.stop="onDeleteNode">×</button>
     <Handle v-if="kind === 'unary' || kind === 'sink'" type="target" :position="Position.Left" id="in" class="hdl in" :connectable="true" />
     <Handle v-if="kind === 'binary'" type="target" :position="Position.Left" id="in1" class="hdl in hdl-top" :connectable="true" />
     <Handle v-if="kind === 'binary'" type="target" :position="Position.Left" id="in2" class="hdl in hdl-bottom" :connectable="true" />
@@ -69,6 +70,10 @@ function onClickNode() {
     props.data.onSelectView?.()
   }
 }
+
+function onDeleteNode() {
+  props.data.onDeleteNode?.()
+}
 </script>
 
 <style scoped>
@@ -81,6 +86,26 @@ function onClickNode() {
   border-radius: 10px;
   padding: 10px;
   box-shadow: 0 6px 18px rgba(10, 24, 39, 0.1);
+}
+
+.delete-btn {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 12px;
+  line-height: 1;
+  background: #f3f5f7;
+  color: #55606f;
+  border: 1px solid #ccd6e1;
+}
+
+.delete-btn:hover {
+  background: #ffe9e9;
+  color: #ba2b2b;
+  border-color: #e6b7b7;
 }
 
 .node.active {

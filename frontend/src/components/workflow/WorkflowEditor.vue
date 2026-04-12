@@ -29,6 +29,7 @@
           :connect-on-click="false"
           :connection-mode="ConnectionMode.Loose"
           @connect="onConnect"
+          @edge-click="onEdgeClick"
           :fit-view-on-init="true"
         >
           <Background />
@@ -125,6 +126,7 @@ watch(
 
 watch([flowNodes, flowEdges], () => {
   if (syncingFromProps) return
+  ensureActiveViewValid()
   emit('update:modelValue', {
     nodes: flowNodes.value.map(n => sanitizeNode(n)),
     edges: flowEdges.value.map(e => ({ ...e })),
@@ -178,6 +180,16 @@ function onNodeParams(nodeId, params) {
   ]
 }
 
+function onDeleteNode(nodeId) {
+  const target = flowNodes.value.find(n => n.id === nodeId)
+  if (!target) return
+  flowNodes.value = flowNodes.value.filter(n => n.id !== nodeId)
+  flowEdges.value = flowEdges.value.filter(e => e.source !== nodeId && e.target !== nodeId)
+  if (target.data?.nodeType === 'view' && props.activeViewId === nodeId) {
+    selectFallbackView()
+  }
+}
+
 function hydrateNode(node) {
   const id = node.id
   return {
@@ -186,6 +198,7 @@ function hydrateNode(node) {
       ...(node.data || {}),
       onParamsChange: (payload) => onNodeParams(id, payload),
       onSelectView: () => emit('select-view', id),
+      onDeleteNode: () => onDeleteNode(id),
     },
   }
 }
@@ -194,6 +207,7 @@ function sanitizeNode(node) {
   const cleanData = { ...(node.data || {}) }
   delete cleanData.onParamsChange
   delete cleanData.onSelectView
+  delete cleanData.onDeleteNode
   return {
     ...node,
     data: cleanData,
@@ -210,11 +224,30 @@ watch(
         active: n.data?.nodeType === 'view' && n.id === viewId,
         onParamsChange: (payload) => onNodeParams(n.id, payload),
         onSelectView: () => emit('select-view', n.id),
+        onDeleteNode: () => onDeleteNode(n.id),
       },
     }))
   },
   { immediate: true },
 )
+
+function onEdgeClick(_event, edge) {
+  if (!edge?.id) return
+  flowEdges.value = flowEdges.value.filter(e => e.id !== edge.id)
+}
+
+function selectFallbackView() {
+  const fallback = flowNodes.value.find(n => n.data?.nodeType === 'view')
+  emit('select-view', fallback?.id ?? null)
+}
+
+function ensureActiveViewValid() {
+  const hasActiveView = flowNodes.value.some(
+    n => n.data?.nodeType === 'view' && n.id === props.activeViewId,
+  )
+  if (hasActiveView) return
+  selectFallbackView()
+}
 
 function onConnect(conn) {
   const source = flowNodes.value.find(n => n.id === conn.source)
