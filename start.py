@@ -1,6 +1,7 @@
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -34,20 +35,20 @@ def _stop_process(process: subprocess.Popen) -> None:
 def main() -> int:
     backend = None
     frontend = None
-    stop_requested = False
+    stop_requested = threading.Event()
 
     def _handle_sigterm(_signum, _frame):
-        nonlocal stop_requested
-        stop_requested = True
+        stop_requested.set()
 
     signal.signal(signal.SIGTERM, _handle_sigterm)
+    signal.signal(signal.SIGINT, _handle_sigterm)
 
     try:
         backend = _start_process([sys.executable, "main.py"], BACKEND_DIR, "backend")
         frontend = _start_process(["npm", "run", "dev", "--", "--open"], FRONTEND_DIR, "frontend")
 
         while True:
-            if stop_requested:
+            if stop_requested.is_set():
                 raise KeyboardInterrupt
 
             backend_code = backend.poll()
@@ -63,7 +64,7 @@ def main() -> int:
                 _stop_process(backend)
                 return frontend_code
 
-            time.sleep(1)
+            time.sleep(0.1)
     except KeyboardInterrupt:
         print("\nStopping services...")
         if frontend is not None:
