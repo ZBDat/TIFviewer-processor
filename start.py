@@ -1,0 +1,84 @@
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+
+ROOT_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = ROOT_DIR / "backend"
+FRONTEND_DIR = ROOT_DIR / "frontend"
+
+
+def _start_process(command: list[str], cwd: Path, name: str) -> subprocess.Popen:
+    try:
+        return subprocess.Popen(command, cwd=cwd)
+    except FileNotFoundError as exc:
+        raise RuntimeError(f"Failed to start {name}: {exc}") from exc
+
+
+def _stop_process(process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            pass
+
+
+def main() -> int:
+    backend = None
+    frontend = None
+    stop_requested = False
+
+    def _handle_sigterm(_signum, _frame):
+        nonlocal stop_requested
+        stop_requested = True
+
+    signal.signal(signal.SIGTERM, _handle_sigterm)
+
+    try:
+        backend = _start_process([sys.executable, "main.py"], BACKEND_DIR, "backend")
+        frontend = _start_process(["npm", "run", "dev", "--", "--open"], FRONTEND_DIR, "frontend")
+
+        while True:
+            if stop_requested:
+                raise KeyboardInterrupt
+
+            backend_code = backend.poll()
+            frontend_code = frontend.poll()
+
+            if backend_code is not None:
+                print(f"Backend exited with code {backend_code}. Stopping frontend...")
+                _stop_process(frontend)
+                return backend_code
+
+            if frontend_code is not None:
+                print(f"Frontend exited with code {frontend_code}. Stopping backend...")
+                _stop_process(backend)
+                return frontend_code
+
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nStopping services...")
+        if frontend is not None:
+            _stop_process(frontend)
+        if backend is not None:
+            _stop_process(backend)
+        return 0
+    except RuntimeError as exc:
+        print(exc)
+        if frontend is not None:
+            _stop_process(frontend)
+        if backend is not None:
+            _stop_process(backend)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -21,6 +21,17 @@ A frontend-backend separated tool for viewing and processing **16-bit grayscale 
 
 ## Quick start
 
+### Unified startup
+
+```bash
+pip install -r backend/requirements.txt
+cd frontend && npm install && cd ..
+python start.py
+```
+
+This starts both backend and frontend together and automatically opens
+**http://localhost:5173** in your browser.
+
 ### Backend
 
 ```bash
