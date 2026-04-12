@@ -126,7 +126,6 @@ watch(
 
 watch([flowNodes, flowEdges], () => {
   if (syncingFromProps) return
-  ensureActiveViewValid()
   emit('update:modelValue', {
     nodes: flowNodes.value.map(n => sanitizeNode(n)),
     edges: flowEdges.value.map(e => ({ ...e })),
@@ -231,14 +230,25 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => flowNodes.value.map(n => n.id),
+  () => {
+    if (syncingFromProps) return
+    ensureActiveViewValid()
+  },
+)
+
 function onEdgeClick(_event, edge) {
   if (!edge?.id) return
   flowEdges.value = flowEdges.value.filter(e => e.id !== edge.id)
 }
 
+function getFallbackViewId() {
+  return flowNodes.value.find(n => n.data?.nodeType === 'view')?.id ?? null
+}
+
 function selectFallbackView() {
-  const fallback = flowNodes.value.find(n => n.data?.nodeType === 'view')
-  emit('select-view', fallback?.id ?? null)
+  emit('select-view', getFallbackViewId())
 }
 
 function ensureActiveViewValid() {
