@@ -32,6 +32,13 @@ def _stop_process(process: subprocess.Popen) -> None:
             pass
 
 
+def _stop_services(frontend: subprocess.Popen | None, backend: subprocess.Popen | None) -> None:
+    if frontend is not None:
+        _stop_process(frontend)
+    if backend is not None:
+        _stop_process(backend)
+
+
 def main() -> int:
     backend = None
     frontend = None
@@ -67,17 +74,11 @@ def main() -> int:
             time.sleep(0.1)
     except KeyboardInterrupt:
         print("\nStopping services...")
-        if frontend is not None:
-            _stop_process(frontend)
-        if backend is not None:
-            _stop_process(backend)
+        _stop_services(frontend, backend)
         return 0
     except RuntimeError as exc:
         print(exc)
-        if frontend is not None:
-            _stop_process(frontend)
-        if backend is not None:
-            _stop_process(backend)
+        _stop_services(frontend, backend)
         return 1
 
 
