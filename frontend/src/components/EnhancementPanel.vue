@@ -49,6 +49,61 @@ const OPTIONS = [
     label: 'Local Contrast Normalization',
     params: { sigma: 25.54, epsilon: 0.08, output_gain: 1.0 },
   },
+  {
+    type: 'gamma_correction',
+    label: 'Gamma Correction',
+    params: { gamma: 1.0, gain: 1.0 },
+  },
+  {
+    type: 'log_correction',
+    label: 'Log Correction',
+    params: { gain: 1.0, inv: false },
+  },
+  {
+    type: 'sigmoid_correction',
+    label: 'Sigmoid Correction',
+    params: { cutoff: 0.5, gain: 10.0, inv: false },
+  },
+  {
+    type: 'tophat',
+    label: 'Tophat',
+    params: { size: 15 },
+  },
+  {
+    type: 'white_tophat',
+    label: 'White-Tophat',
+    params: { size: 15 },
+  },
+  {
+    type: 'gaussian_blur',
+    label: 'Gaussian Blur',
+    params: { sigma: 1.5 },
+  },
+  {
+    type: 'median_blur',
+    label: 'Median Blur',
+    params: { size: 3 },
+  },
+  {
+    type: 'rescale_intensity',
+    label: 'Rescale Intensity',
+    params: { in_low: 0, in_high: 65535, out_low: 0, out_high: 65535 },
+  },
+  {
+    type: 'add_operation',
+    label: 'Add (Upper + Lower)',
+    params: {},
+  },
+  {
+    type: 'subtract_operation',
+    label: 'Subtract (Upper - Lower)',
+    params: {},
+  },
+  {
+    type: 'divide_operation',
+    label: 'Divide (Upper / Lower)',
+    params: { epsilon: 0.000001 },
+  },
 ]
 
 const props = defineProps({

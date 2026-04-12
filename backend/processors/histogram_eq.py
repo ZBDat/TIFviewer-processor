@@ -1,5 +1,10 @@
 import numpy as np
 from skimage.exposure import equalize_hist
+from pydantic import BaseModel, ConfigDict
+
+
+class Params(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
 
 def apply(image: np.ndarray) -> np.ndarray:

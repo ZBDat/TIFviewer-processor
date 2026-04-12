@@ -11,11 +11,16 @@ A frontend-backend separated tool for viewing and processing **16-bit grayscale 
 
 ## Features
 
-* Upload 16-bit TIF/TIFF files
+* Upload strict 2-D uint16 grayscale TIF/TIFF files
 * Grayscale histogram with hover tooltip (Value / Distribution)
 * Composable enhancement pipeline (drag-to-reorder, add/remove)
   * Histogram Equalization
   * Local Contrast Normalization (Sigma, Epsilon, Output Gain sliders)
+  * Gamma / Log / Sigmoid correction
+  * Tophat / White-Tophat
+  * Gaussian blur / Median blur
+  * Rescale intensity
+  * Add / Subtract / Divide operation cards
 * Image viewer with scroll-to-zoom and drag-to-pan
 * Toolbar with zoom in/out/fit and annotation-mode placeholders
 
@@ -59,6 +64,46 @@ all `/api/*` requests to the FastAPI backend automatically.
 | `GET`  | `/api/image/{file_id}` | Render processed PNG (query: `enhancements`, `min_val`, `max_val`) |
 | `GET`  | `/api/histogram/{file_id}` | 256-bin histogram JSON |
 | `POST` | `/api/process` | Apply pipeline; returns base64 PNG + histogram |
+
+### Processor extension contract
+
+Each enhancement processor follows one registration contract in `backend/processors/__init__.py`:
+
+* `apply(image, **params) -> np.ndarray` function in the processor module
+* `Params` pydantic model in the same module (`extra="forbid"` recommended)
+* one entry in `PROCESSOR_SPECS` mapping `type` to `{apply, params_model}`
+
+After registration, request validation and pipeline execution pick it up automatically.
+
+Built-in enhancement types include:
+
+* `histogram_equalization`
+* `local_contrast_normalization`
+* `gamma_correction`
+* `log_correction`
+* `sigmoid_correction`
+* `tophat`
+* `white_tophat`
+* `gaussian_blur`
+* `median_blur`
+* `rescale_intensity`
+* `add_operation`
+* `subtract_operation`
+* `divide_operation`
+
+Binary operation behavior:
+
+* If you place a binary card between two unary steps, backend computes:
+  * `upper_result = upper_step(previous_result)`
+  * `lower_result = lower_step(previous_result)`
+  * `combined = binary_op(upper_result, lower_result)`
+
+### Input and cache contract
+
+* Upload accepts only 2-D uint16 grayscale `.tif/.tiff` images.
+* Images are stored in an in-memory LRU cache with a hard 2 GB cap.
+* When cache pressure is high, least-recently-used images are evicted automatically.
+* Invalid enhancement payloads return generic request errors without internal details.
 
 ## Project layout
 

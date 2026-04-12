@@ -1,5 +1,13 @@
 import numpy as np
 from scipy.ndimage import gaussian_filter
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class Params(BaseModel):
+    sigma: float = Field(default=25.54, gt=0)
+    epsilon: float = Field(default=0.08, gt=0)
+    output_gain: float = Field(default=1.0, gt=0)
+    model_config = ConfigDict(extra="forbid")
 
 
 def apply(

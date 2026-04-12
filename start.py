@@ -1,4 +1,5 @@
 import signal
+import shutil
 import subprocess
 import sys
 import threading
@@ -11,7 +12,27 @@ BACKEND_DIR = ROOT_DIR / "backend"
 FRONTEND_DIR = ROOT_DIR / "frontend"
 
 
+def _resolve_executable(name: str) -> str | None:
+    candidates = [name]
+    if sys.platform == "win32":
+        candidates = [name, f"{name}.cmd", f"{name}.exe"]
+
+    for candidate in candidates:
+        resolved = shutil.which(candidate)
+        if resolved:
+            return resolved
+    return None
+
+
 def _start_process(command: list[str], cwd: Path, name: str) -> subprocess.Popen:
+    resolved = _resolve_executable(command[0])
+    if not resolved:
+        raise RuntimeError(
+            f"Failed to start {name}: executable not found: {command[0]!r}. "
+            "Please ensure it is installed and available in PATH."
+        )
+    command = [resolved, *command[1:]]
+
     try:
         return subprocess.Popen(command, cwd=cwd)
     except FileNotFoundError as exc:
