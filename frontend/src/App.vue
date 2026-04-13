@@ -1,14 +1,10 @@
 <template>
   <div class="app">
-    <aside class="sidebar">
-      <Histogram :histogram="histogram" />
-      <button class="workflow-btn" @click="openWorkflowEditor">Open Enhancement Workflow</button>
-      <div class="workflow-tip">
-        Click a <code>View</code> node in the workflow canvas to preview that branch.
-      </div>
-    </aside>
+    <section class="workflow-pane">
+      <WorkflowEditor v-model="workflow" :activeNodeId="activeNodeId" @select-node="onSelectNode" />
+    </section>
 
-    <main class="main">
+    <section class="viewer-pane">
       <Toolbar
         @open-file="onFileSelected"
         :mode="toolMode"
@@ -25,17 +21,13 @@
         />
         <div v-if="loading" class="loading-overlay">Processing…</div>
       </div>
-    </main>
+    </section>
+
+    <div class="hist-floating">
+      <Histogram :histogram="histogram" />
+    </div>
 
     <input ref="fileInput" type="file" accept=".tif,.tiff" style="display:none" @change="onFileInputChange" />
-
-    <WorkflowEditor
-      v-if="workflowOpen"
-      v-model="workflow"
-      :activeViewId="activeViewId"
-      @close="workflowOpen = false"
-      @select-view="onSelectView"
-    />
   </div>
 </template>
 
@@ -55,9 +47,8 @@ const toolMode = ref('select')
 const loading = ref(false)
 const zoomDelta = ref(0)
 const fitSignal = ref(0)
-const workflowOpen = ref(false)
-const activeViewId = ref(null)
 const workflow = ref({ nodes: [], edges: [] })
+const activeNodeId = ref(null)
 
 let latestProcessRequestId = 0
 let processAbortController = null
@@ -96,7 +87,8 @@ async function uploadFile(file) {
     const data = await res.json()
     fileId.value = data.file_id
     ensureWorkflowInit()
-    await refreshWorkflowResult()
+    activeNodeId.value = workflow.value.nodes[0]?.id ?? null
+    await refreshActiveNodeResult()
   } catch (err) {
     if (err.name === 'AbortError' && uploadTimedOut) {
       alert('Upload timeout: server processing took too long.')
@@ -123,42 +115,13 @@ function ensureWorkflowInit() {
       params: {},
     },
   }
-  const view = {
-    id: 'n-2',
-    type: 'workflowNode',
-    position: { x: 420, y: 120 },
-    data: {
-      nodeType: 'view',
-      title: WORKFLOW_NODE_TYPES.view.label,
-      kind: 'sink',
-      params: {},
-      active: true,
-    },
-  }
-  const edge = {
-    id: 'e-n-1-n-2',
-    source: 'n-1',
-    target: 'n-2',
-    sourceHandle: 'out',
-    targetHandle: 'in',
-  }
-  workflow.value = { nodes: [original, view], edges: [edge] }
-  activeViewId.value = view.id
+  workflow.value = { nodes: [original], edges: [] }
 }
 
-function openWorkflowEditor() {
-  ensureWorkflowInit()
-  workflowOpen.value = true
+function onSelectNode(nodeId) {
+  activeNodeId.value = nodeId
+  refreshActiveNodeResult()
 }
-
-function onSelectView(viewId) {
-  activeViewId.value = viewId
-  refreshWorkflowResult()
-}
-
-watch(workflow, () => {
-  refreshWorkflowResult()
-}, { deep: true })
 
 function toGraphPayload() {
   const nodes = (workflow.value.nodes || []).map((n) => ({
@@ -175,9 +138,20 @@ function toGraphPayload() {
   return { nodes, edges }
 }
 
-async function refreshWorkflowResult() {
+watch(workflow, () => {
+  if (!activeNodeId.value) return
+  const exists = (workflow.value.nodes || []).some((n) => n.id === activeNodeId.value)
+  if (!exists) {
+    activeNodeId.value = workflow.value.nodes[0]?.id ?? null
+  }
+  if (activeNodeId.value) {
+    refreshActiveNodeResult()
+  }
+}, { deep: true })
+
+async function refreshActiveNodeResult() {
   if (!fileId.value) return
-  if (!activeViewId.value) return
+  if (!activeNodeId.value) return
   const requestId = ++latestProcessRequestId
   if (processAbortController) {
     processAbortController.abort()
@@ -193,7 +167,12 @@ async function refreshWorkflowResult() {
   loading.value = true
   try {
     const graph = toGraphPayload()
-    const payload = { file_id: fileId.value, nodes: graph.nodes, edges: graph.edges, view_id: activeViewId.value }
+    const payload = {
+      file_id: fileId.value,
+      nodes: graph.nodes,
+      edges: graph.edges,
+      target_id: activeNodeId.value,
+    }
     const res = await fetch('/api/process-graph', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -233,56 +212,42 @@ function onZoom(delta) {
 
 <style scoped>
 .app {
+  position: relative;
   display: flex;
   height: 100vh;
   overflow: hidden;
+  background: #e9eef3;
 }
 
-/* ── Left sidebar ─────────────────────────── */
-.sidebar {
-  width: 360px;
-  flex-shrink: 0;
-  background: #eef3f8;
-  border-right: 1px solid #ddd;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px;
-  overflow-y: auto;
-}
-
-.workflow-btn {
-  border-radius: 8px;
-  padding: 10px 12px;
-  background: #0f7a5a;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.workflow-tip {
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #d5dde7;
-  padding: 10px;
-  font-size: 12px;
-  color: #445;
-  line-height: 1.4;
-}
-
-/* ── Main content ─────────────────────────── */
-.main {
+.viewer-pane {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  overflow: hidden;
+  border-left: 1px solid #d3dbe5;
+}
+
+.workflow-pane {
+  width: 48%;
+  min-width: 560px;
+  background: #f6f8fa;
 }
 
 .viewer-container {
   flex: 1;
   position: relative;
   min-height: 0;
+}
+
+.hist-floating {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: 320px;
+  z-index: 120;
+  box-shadow: 0 10px 24px rgba(15, 28, 45, 0.24);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .loading-overlay {

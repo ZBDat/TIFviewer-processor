@@ -1,7 +1,7 @@
 <template>
-  <div class="node" :class="[kindClass, { active: data.active }]" @click="onClickNode">
-    <button class="delete-btn" type="button" @click.stop="onDeleteNode">×</button>
-    <Handle v-if="kind === 'unary' || kind === 'sink'" type="target" :position="Position.Left" id="in" class="hdl in" :connectable="true" />
+  <div class="node" :class="[kindClass, { active: data.active }]" @click="onSelectNode">
+    <button class="delete-btn nodrag" type="button" @click.stop="onDeleteNode">×</button>
+    <Handle v-if="kind === 'unary'" type="target" :position="Position.Left" id="in" class="hdl in" :connectable="true" />
     <Handle v-if="kind === 'binary'" type="target" :position="Position.Left" id="in1" class="hdl in hdl-top" :connectable="true" />
     <Handle v-if="kind === 'binary'" type="target" :position="Position.Left" id="in2" class="hdl in hdl-bottom" :connectable="true" />
 
@@ -12,23 +12,28 @@
         <span>{{ k }}</span>
         <input
           v-if="typeof v === 'number'"
+          class="nodrag"
           type="number"
           :value="v"
           step="any"
+          @mousedown.stop
+          @mouseup.stop
+          @wheel.prevent
           @input="onNum(k, $event)"
         />
         <input
           v-else-if="typeof v === 'boolean'"
+          class="nodrag"
           type="checkbox"
           :checked="v"
+          @mousedown.stop
+          @mouseup.stop
           @change="onBool(k, $event)"
         />
       </label>
     </div>
 
-    <div v-if="kind === 'sink'" class="view-hint">Click to preview</div>
-
-    <Handle v-if="kind !== 'sink'" type="source" :position="Position.Right" id="out" class="hdl out" :connectable="true" />
+    <Handle type="source" :position="Position.Right" id="out" class="hdl out" :connectable="true" />
   </div>
 </template>
 
@@ -65,14 +70,12 @@ function onBool(key, e) {
   props.data.onParamsChange?.({ ...localParams })
 }
 
-function onClickNode() {
-  if (kind.value === 'sink') {
-    props.data.onSelectView?.()
-  }
-}
-
 function onDeleteNode() {
   props.data.onDeleteNode?.()
+}
+
+function onSelectNode() {
+  props.data.onSelectNode?.()
 }
 </script>
 
@@ -141,21 +144,9 @@ function onDeleteNode() {
   font-size: 11px;
 }
 
-.view-hint {
-  font-size: 11px;
-  color: #1f6feb;
-  margin-top: 4px;
-}
-
 .kind-source {
   border-color: #57a773;
   background: #f1fbf5;
-}
-
-.kind-sink {
-  border-color: #1f6feb;
-  background: #eff6ff;
-  cursor: pointer;
 }
 
 .kind-binary {

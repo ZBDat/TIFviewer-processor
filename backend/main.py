@@ -276,7 +276,8 @@ class ProcessGraphRequest(BaseModel):
     file_id: str
     nodes: list[GraphNodeRequest]
     edges: list[GraphEdgeRequest] = Field(default_factory=list)
-    view_id: str
+    target_id: Optional[str] = None
+    view_id: Optional[str] = None
 
 
 @app.post("/api/process")
@@ -297,7 +298,8 @@ def process_graph(req: ProcessGraphRequest):
         raise HTTPException(status_code=404, detail="File not found")
 
     node_map: dict[str, GraphNodeRequest] = {n.id: n for n in req.nodes}
-    if req.view_id not in node_map:
+    target_id = req.target_id or req.view_id
+    if not target_id or target_id not in node_map:
         raise HTTPException(status_code=400, detail="invalid enhancement parameters")
 
     incoming: dict[str, list[GraphEdgeRequest]] = {node_id: [] for node_id in node_map}
@@ -366,7 +368,7 @@ def process_graph(req: ProcessGraphRequest):
         cache[node_id] = out.astype(np.float32)
         return cache[node_id]
 
-    img = eval_node(req.view_id)
+    img = eval_node(target_id)
     b64 = base64.b64encode(_to_png_bytes(img, None, None)).decode()
     return {"image": b64, "histogram": _compute_histogram(img)}
 

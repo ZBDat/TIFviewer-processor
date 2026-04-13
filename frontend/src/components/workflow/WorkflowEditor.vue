@@ -1,47 +1,43 @@
 <template>
-  <div class="workflow-overlay" @click.self="$emit('close')">
-    <div class="workflow-shell">
-      <aside class="palette">
-        <div class="palette-title">Enhancements</div>
-        <button class="palette-row add-view" @click="addNode('view')">+ View</button>
-        <button class="palette-row" @click="duplicateOriginal">+ Duplicate Original</button>
-        <div v-for="item in palette" :key="item.type" class="palette-row">
-          <span>{{ item.label }}</span>
-          <button @click="addNode(item.type)">+</button>
-        </div>
-      </aside>
+  <div class="workflow-shell">
+    <aside class="palette">
+      <div class="palette-title">Enhancements</div>
+      <button class="palette-row" @click="duplicateOriginal">+ Duplicate Original</button>
+      <div v-for="item in palette" :key="item.type" class="palette-row">
+        <span>{{ item.label }}</span>
+        <button @click="addNode(item.type)">+</button>
+      </div>
+    </aside>
 
-      <section class="canvas-wrap">
-        <div class="canvas-header">
-          <span>Workflow Canvas</span>
-          <button class="close-btn" @click="$emit('close')">Done</button>
-        </div>
-        <VueFlow
-          v-model:nodes="flowNodes"
-          v-model:edges="flowEdges"
-          class="flow"
-          :node-types="nodeTypes"
-          :nodes-draggable="true"
-          :nodes-connectable="true"
-          :elements-selectable="true"
-          :snap-to-grid="true"
-          :snap-grid="[20, 20]"
-          :connect-on-click="false"
-          :connection-mode="ConnectionMode.Loose"
-          @connect="onConnect"
-          @edge-click="onEdgeClick"
-          :fit-view-on-init="true"
-        >
-          <Background />
-          <Controls />
-        </VueFlow>
-      </section>
-    </div>
+    <section class="canvas-wrap">
+      <div class="canvas-header">
+        <span>Workflow Canvas</span>
+      </div>
+      <VueFlow
+        v-model:nodes="flowNodes"
+        v-model:edges="flowEdges"
+        class="flow"
+        :node-types="nodeTypes"
+        :nodes-draggable="true"
+        :nodes-connectable="true"
+        :elements-selectable="true"
+        :snap-to-grid="true"
+        :snap-grid="[20, 20]"
+        :connect-on-click="false"
+        :connection-mode="ConnectionMode.Loose"
+        @connect="onConnect"
+        @edge-click="onEdgeClick"
+        :fit-view-on-init="true"
+      >
+        <Background />
+        <Controls />
+      </VueFlow>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { markRaw, nextTick, ref, watch } from 'vue'
+import { markRaw, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ConnectionMode, VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -50,10 +46,10 @@ import WorkflowNodeCard from './WorkflowNodeCard.vue'
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
-  activeViewId: { type: String, default: null },
+  activeNodeId: { type: String, default: null },
 })
 
-const emit = defineEmits(['update:modelValue', 'close', 'select-view'])
+const emit = defineEmits(['update:modelValue', 'select-node'])
 
 const nodeTypes = { workflowNode: markRaw(WorkflowNodeCard) }
 const palette = WORKFLOW_PALETTE
@@ -62,15 +58,17 @@ const flowNodes = ref([])
 const flowEdges = ref([])
 let seq = 1
 let syncingFromProps = false
+let initializedFromProps = false
+const selectedEdgeId = ref(null)
 
 watch(
   () => props.modelValue,
   (v) => {
+    if (initializedFromProps) return
     syncingFromProps = true
     const incomingNodes = (v?.nodes || []).map(n => ({ ...n }))
     if (incomingNodes.length === 0) {
       const originalId = `n-${seq++}`
-      const viewId = `n-${seq++}`
       flowNodes.value = [
         hydrateNode({
           id: originalId,
@@ -83,29 +81,11 @@ watch(
             params: {},
           },
         }),
-        hydrateNode({
-          id: viewId,
-          type: 'workflowNode',
-          position: { x: 420, y: 120 },
-          data: {
-            nodeType: 'view',
-            title: WORKFLOW_NODE_TYPES.view.label,
-            kind: 'sink',
-            params: {},
-            active: true,
-          },
-        }),
       ]
-      flowEdges.value = [{
-        id: `e-${originalId}-${viewId}`,
-        source: originalId,
-        target: viewId,
-        sourceHandle: 'out',
-        targetHandle: 'in',
-      }]
-      emit('select-view', viewId)
+      flowEdges.value = []
       nextTick(() => {
         syncingFromProps = false
+        initializedFromProps = true
       })
       return
     }
@@ -119,6 +99,7 @@ watch(
 
     nextTick(() => {
       syncingFromProps = false
+      initializedFromProps = true
     })
   },
   { immediate: true, deep: true },
@@ -147,17 +128,11 @@ function addNode(type) {
       title: meta.label,
       kind: meta.kind,
       params: { ...meta.params },
-      active: type === 'view' && id === props.activeViewId,
       onParamsChange: (payload) => onNodeParams(id, payload),
-      onSelectView: () => emit('select-view', id),
+      onSelectNode: () => emit('select-node', id),
     },
   }
   flowNodes.value = [...flowNodes.value, hydrateNode(newNode)]
-  if (type === 'view') {
-    nextTick(() => {
-      emit('select-view', id)
-    })
-  }
 }
 
 function duplicateOriginal() {
@@ -167,20 +142,16 @@ function duplicateOriginal() {
 function onNodeParams(nodeId, params) {
   const idx = flowNodes.value.findIndex(n => n.id === nodeId)
   if (idx < 0) return
-  const updated = {
-    ...flowNodes.value[idx],
+  const node = flowNodes.value[idx]
+  flowNodes.value[idx] = hydrateNode({
+    ...node,
     data: {
-      ...flowNodes.value[idx].data,
+      ...node.data,
       params: { ...params },
       onParamsChange: (payload) => onNodeParams(nodeId, payload),
-      onSelectView: () => emit('select-view', nodeId),
+      onSelectNode: () => emit('select-node', nodeId),
     },
-  }
-  flowNodes.value = [
-    ...flowNodes.value.slice(0, idx),
-    hydrateNode(updated),
-    ...flowNodes.value.slice(idx + 1),
-  ]
+  })
 }
 
 function onDeleteNode(nodeId) {
@@ -188,8 +159,8 @@ function onDeleteNode(nodeId) {
   if (!target) return
   flowNodes.value = flowNodes.value.filter(n => n.id !== nodeId)
   flowEdges.value = flowEdges.value.filter(e => e.source !== nodeId && e.target !== nodeId)
-  if (target.data?.nodeType === 'view' && props.activeViewId === nodeId) {
-    selectFallbackView()
+  if (selectedEdgeId.value && !flowEdges.value.some(e => e.id === selectedEdgeId.value)) {
+    selectedEdgeId.value = null
   }
 }
 
@@ -200,8 +171,9 @@ function hydrateNode(node) {
     data: {
       ...(node.data || {}),
       onParamsChange: (payload) => onNodeParams(id, payload),
-      onSelectView: () => emit('select-view', id),
       onDeleteNode: () => onDeleteNode(id),
+      onSelectNode: () => emit('select-node', id),
+      active: id === props.activeNodeId,
     },
   }
 }
@@ -209,8 +181,8 @@ function hydrateNode(node) {
 function sanitizeNode(node) {
   const cleanData = { ...(node.data || {}) }
   delete cleanData.onParamsChange
-  delete cleanData.onSelectView
   delete cleanData.onDeleteNode
+  delete cleanData.onSelectNode
   return {
     ...node,
     data: cleanData,
@@ -218,16 +190,16 @@ function sanitizeNode(node) {
 }
 
 watch(
-  () => props.activeViewId,
-  (viewId) => {
+  () => props.activeNodeId,
+  (activeId) => {
     flowNodes.value = flowNodes.value.map((n) => ({
       ...n,
       data: {
         ...n.data,
-        active: n.data?.nodeType === 'view' && n.id === viewId,
+        active: n.id === activeId,
         onParamsChange: (payload) => onNodeParams(n.id, payload),
-        onSelectView: () => emit('select-view', n.id),
         onDeleteNode: () => onDeleteNode(n.id),
+        onSelectNode: () => emit('select-node', n.id),
       },
     }))
   },
@@ -235,89 +207,79 @@ watch(
 )
 
 watch(
-  () => flowNodes.value.map(n => n.id),
-  () => {
-    if (syncingFromProps) return
-    ensureActiveViewValid()
+  () => flowEdges.value.map(e => e.id),
+  (ids) => {
+    if (selectedEdgeId.value && !ids.includes(selectedEdgeId.value)) {
+      selectedEdgeId.value = null
+    }
   },
 )
 
 function onEdgeClick(_event, edge) {
   if (!edge?.id) return
-  flowEdges.value = flowEdges.value.filter(e => e.id !== edge.id)
+  selectedEdgeId.value = edge.id
 }
 
-function getFallbackViewId() {
-  return flowNodes.value.find(n => n.data?.nodeType === 'view')?.id ?? null
+function onKeydown(e) {
+  if (e.key !== 'Delete' && e.key !== 'Backspace') return
+  if (!selectedEdgeId.value) return
+  flowEdges.value = flowEdges.value.filter(edge => edge.id !== selectedEdgeId.value)
+  selectedEdgeId.value = null
 }
 
-function selectFallbackView() {
-  emit('select-view', getFallbackViewId())
-}
+onMounted(() => {
+  window.addEventListener('keydown', onKeydown)
+})
 
-function ensureActiveViewValid() {
-  const hasActiveView = flowNodes.value.some(
-    n => n.data?.nodeType === 'view' && n.id === props.activeViewId,
-  )
-  if (hasActiveView) return
-  selectFallbackView()
-}
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown)
+})
 
 function onConnect(conn) {
   const source = flowNodes.value.find(n => n.id === conn.source)
   const target = flowNodes.value.find(n => n.id === conn.target)
   if (!source || !target) return
 
-  const sourceKind = source.data?.kind
   const targetKind = target.data?.kind
-  if (sourceKind === 'sink') return
   if (targetKind === 'source') return
 
-  if (targetKind === 'unary' || targetKind === 'sink') {
+  if (targetKind === 'unary') {
     flowEdges.value = flowEdges.value.filter(e => e.target !== conn.target)
-    flowEdges.value = [...flowEdges.value, {
+    const newEdge = {
       id: `e-${conn.source}-${conn.target}-${Date.now()}`,
       source: conn.source,
       target: conn.target,
       sourceHandle: 'out',
       targetHandle: 'in',
-    }]
+    }
+    flowEdges.value = [...flowEdges.value, newEdge]
+    selectedEdgeId.value = newEdge.id
     return
   }
 
   if (targetKind === 'binary') {
     const th = conn.targetHandle || 'in1'
     flowEdges.value = flowEdges.value.filter(e => !(e.target === conn.target && e.targetHandle === th))
-    flowEdges.value = [...flowEdges.value, {
+    const newEdge = {
       id: `e-${conn.source}-${conn.target}-${th}-${Date.now()}`,
       source: conn.source,
       target: conn.target,
       sourceHandle: 'out',
       targetHandle: th,
-    }]
+    }
+    flowEdges.value = [...flowEdges.value, newEdge]
+    selectedEdgeId.value = newEdge.id
   }
 }
 </script>
 
 <style scoped>
-.workflow-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(8, 15, 22, 0.45);
-  z-index: 200;
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-}
-
 .workflow-shell {
-  width: min(1400px, 96vw);
-  margin: 18px 0;
+  width: 100%;
+  height: 100%;
   background: #f6f8fa;
-  border-radius: 10px;
   overflow: hidden;
   display: flex;
-  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.25);
 }
 
 .palette {
@@ -354,8 +316,7 @@ function onConnect(conn) {
   color: #fff;
 }
 
-.palette-row.add-view,
-.palette-row.add-view + .palette-row {
+.palette-row:first-of-type {
   width: 100%;
   justify-content: center;
   background: #ebf7f2;
@@ -381,13 +342,6 @@ function onConnect(conn) {
   padding: 0 12px;
   font-size: 13px;
   font-weight: 700;
-}
-
-.close-btn {
-  padding: 6px 10px;
-  border-radius: 7px;
-  background: #1f6feb;
-  color: #fff;
 }
 
 .flow {

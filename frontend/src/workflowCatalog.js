@@ -4,11 +4,6 @@ export const WORKFLOW_NODE_TYPES = {
     kind: 'source',
     params: {},
   },
-  view: {
-    label: 'View',
-    kind: 'sink',
-    params: {},
-  },
   histogram_equalization: {
     label: 'Histogram Equalization',
     kind: 'unary',
@@ -77,7 +72,7 @@ export const WORKFLOW_NODE_TYPES = {
 }
 
 export const WORKFLOW_PALETTE = Object.entries(WORKFLOW_NODE_TYPES)
-  .filter(([type]) => type !== 'original_image' && type !== 'view')
+  .filter(([type]) => type !== 'original_image')
   .map(([type, meta]) => ({
     type,
     label: meta.label,
