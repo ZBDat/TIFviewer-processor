@@ -23,10 +23,10 @@ def apply(
     y = np.arange(h, dtype=np.float32) - (h / 2.0)
     x = np.arange(w, dtype=np.float32) - (w / 2.0)
     yy, xx = np.meshgrid(y, x, indexing="ij")
-    d2 = yy ** 2 + xx ** 2
+    freq_distance_sq = yy ** 2 + xx ** 2
 
     # Gaussian high-pass style transfer function
-    high_pass = 1.0 - np.exp(-d2 / (2.0 * sigma * sigma))
+    high_pass = 1.0 - np.exp(-freq_distance_sq / (2.0 * sigma * sigma))
     transfer = low_gain + (high_gain - low_gain) * high_pass
 
     freq = np.fft.fftshift(np.fft.fft2(log_img))

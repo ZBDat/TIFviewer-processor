@@ -25,24 +25,24 @@ def apply(
     grad_x = np.diff(log_img, axis=1)
     grad_y = np.diff(log_img, axis=0)
 
-    wx = lambda_value / (np.abs(grad_x) ** alpha + epsilon)  # h, w-1
-    wy = lambda_value / (np.abs(grad_y) ** alpha + epsilon)  # h-1, w
+    horizontal_weights = lambda_value / (np.abs(grad_x) ** alpha + epsilon)  # h, w-1
+    vertical_weights = lambda_value / (np.abs(grad_y) ** alpha + epsilon)  # h-1, w
 
     diag = np.ones((h, w), dtype=np.float64)
-    diag[:, :-1] += wx
-    diag[:, 1:] += wx
-    diag[:-1, :] += wy
-    diag[1:, :] += wy
+    diag[:, :-1] += horizontal_weights
+    diag[:, 1:] += horizontal_weights
+    diag[:-1, :] += vertical_weights
+    diag[1:, :] += vertical_weights
 
     east = np.zeros((h, w), dtype=np.float64)
     west = np.zeros((h, w), dtype=np.float64)
     south = np.zeros((h, w), dtype=np.float64)
     north = np.zeros((h, w), dtype=np.float64)
 
-    east[:, :-1] = -wx
-    west[:, 1:] = -wx
-    south[:-1, :] = -wy
-    north[1:, :] = -wy
+    east[:, :-1] = -horizontal_weights
+    west[:, 1:] = -horizontal_weights
+    south[:-1, :] = -vertical_weights
+    north[1:, :] = -vertical_weights
 
     a = diags(
         diagonals=[
