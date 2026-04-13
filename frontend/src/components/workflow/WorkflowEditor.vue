@@ -153,7 +153,11 @@ function addNode(type) {
     },
   }
   flowNodes.value = [...flowNodes.value, hydrateNode(newNode)]
-  if (type === 'view') emit('select-view', id)
+  if (type === 'view') {
+    nextTick(() => {
+      emit('select-view', id)
+    })
+  }
 }
 
 function duplicateOriginal() {

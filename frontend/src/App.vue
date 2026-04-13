@@ -62,6 +62,9 @@ const workflow = ref({ nodes: [], edges: [] })
 let latestProcessRequestId = 0
 let processAbortController = null
 
+const UPLOAD_TIMEOUT_MS = 30000
+const PROCESS_TIMEOUT_MS = 30000
+
 function onFileSelected(file) {
   if (file) uploadFile(file)
 }
@@ -74,18 +77,34 @@ function onFileInputChange(e) {
 
 async function uploadFile(file) {
   loading.value = true
+  const uploadController = new AbortController()
+  let uploadTimedOut = false
+  const uploadTimeoutId = setTimeout(() => {
+    uploadTimedOut = true
+    uploadController.abort()
+  }, UPLOAD_TIMEOUT_MS)
+
   try {
     const fd = new FormData()
     fd.append('file', file)
-    const res = await fetch('/api/upload', { method: 'POST', body: fd })
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: fd,
+      signal: uploadController.signal,
+    })
     if (!res.ok) throw new Error(await res.text())
     const data = await res.json()
     fileId.value = data.file_id
     ensureWorkflowInit()
     await refreshWorkflowResult()
   } catch (err) {
+    if (err.name === 'AbortError' && uploadTimedOut) {
+      alert('Upload timeout: server processing took too long.')
+      return
+    }
     alert('Upload failed: ' + err.message)
   } finally {
+    clearTimeout(uploadTimeoutId)
     loading.value = false
   }
 }
@@ -164,6 +183,12 @@ async function refreshWorkflowResult() {
     processAbortController.abort()
   }
   processAbortController = new AbortController()
+  const controller = processAbortController
+  let processTimedOut = false
+  const processTimeoutId = setTimeout(() => {
+    processTimedOut = true
+    controller.abort()
+  }, PROCESS_TIMEOUT_MS)
 
   loading.value = true
   try {
@@ -173,7 +198,7 @@ async function refreshWorkflowResult() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-      signal: processAbortController.signal,
+      signal: controller.signal,
     })
     if (!res.ok) throw new Error(await res.text())
     const data = await res.json()
@@ -182,9 +207,18 @@ async function refreshWorkflowResult() {
     imageUrl.value = `data:image/png;base64,${data.image}`
     histogram.value = data.histogram
   } catch (err) {
-    if (err.name === 'AbortError') return
+    if (err.name === 'AbortError') {
+      if (processTimedOut) {
+        alert('Processing timeout: image workflow took too long.')
+      }
+      return
+    }
     console.error('Process error:', err)
   } finally {
+    clearTimeout(processTimeoutId)
+    if (processAbortController === controller) {
+      processAbortController = null
+    }
     if (requestId === latestProcessRequestId) {
       loading.value = false
     }
