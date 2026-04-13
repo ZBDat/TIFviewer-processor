@@ -8,12 +8,18 @@ from processors.add_operation import Params as AddOperationParams
 from processors.add_operation import apply as add_operation_apply
 from processors.divide_operation import Params as DivideOperationParams
 from processors.divide_operation import apply as divide_operation_apply
+from processors.guided_filter import Params as GuidedFilterParams
+from processors.guided_filter import apply as guided_filter_apply
 from processors.histogram_eq import Params as HistogramEqParams
 from processors.histogram_eq import apply as histogram_equalization_apply
+from processors.homomorphic_filter import Params as HomomorphicFilterParams
+from processors.homomorphic_filter import apply as homomorphic_filter_apply
 from processors.gamma_correction import Params as GammaCorrectionParams
 from processors.gamma_correction import apply as gamma_correction_apply
 from processors.gaussian_blur import Params as GaussianBlurParams
 from processors.gaussian_blur import apply as gaussian_blur_apply
+from processors.anisotropic_diffusion import Params as AnisotropicDiffusionParams
+from processors.anisotropic_diffusion import apply as anisotropic_diffusion_apply
 from processors.local_contrast_norm import Params as LocalContrastNormParams
 from processors.local_contrast_norm import apply as local_contrast_normalization_apply
 from processors.log_correction import Params as LogCorrectionParams
@@ -30,6 +36,8 @@ from processors.tophat import Params as TopHatParams
 from processors.tophat import apply as tophat_apply
 from processors.white_tophat import Params as WhiteTopHatParams
 from processors.white_tophat import apply as white_tophat_apply
+from processors.wls_filter import Params as WlsFilterParams
+from processors.wls_filter import apply as wls_filter_apply
 
 
 @dataclass(frozen=True)
@@ -75,6 +83,22 @@ PROCESSOR_SPECS: dict[str, ProcessorSpec] = {
     "median_blur": ProcessorSpec(
         apply=median_blur_apply,
         params_model=MedianBlurParams,
+    ),
+    "homomorphic_filter": ProcessorSpec(
+        apply=homomorphic_filter_apply,
+        params_model=HomomorphicFilterParams,
+    ),
+    "wls_filter": ProcessorSpec(
+        apply=wls_filter_apply,
+        params_model=WlsFilterParams,
+    ),
+    "anisotropic_diffusion": ProcessorSpec(
+        apply=anisotropic_diffusion_apply,
+        params_model=AnisotropicDiffusionParams,
+    ),
+    "guided_filter": ProcessorSpec(
+        apply=guided_filter_apply,
+        params_model=GuidedFilterParams,
     ),
     "rescale_intensity": ProcessorSpec(
         apply=rescale_intensity_apply,

@@ -19,6 +19,7 @@ A frontend-backend separated tool for viewing and processing **16-bit grayscale 
   * Gamma / Log / Sigmoid correction
   * Tophat / White-Tophat
   * Gaussian blur / Median blur
+  * Homomorphic / WLS / Anisotropic diffusion / Guided filter
   * Rescale intensity
   * Add / Subtract / Divide operation cards
 * Image viewer with scroll-to-zoom and drag-to-pan
@@ -86,6 +87,10 @@ Built-in enhancement types include:
 * `white_tophat`
 * `gaussian_blur`
 * `median_blur`
+* `homomorphic_filter`
+* `wls_filter`
+* `anisotropic_diffusion`
+* `guided_filter`
 * `rescale_intensity`
 * `add_operation`
 * `subtract_operation`
