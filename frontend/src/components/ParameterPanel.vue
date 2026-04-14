@@ -91,6 +91,82 @@
         @update:modelValue="emit"
       />
     </template>
+    <template v-else-if="selected.type === 'homomorphic_filter'">
+      <SliderRow
+        label="Sigma"
+        v-model="params.hf_sigma"
+        :min="1.00" :max="128.00" :step="0.10"
+        @update:modelValue="emit"
+      />
+      <SliderRow
+        label="Low Gain"
+        v-model="params.hf_low_gain"
+        :min="0.00" :max="1.00" :step="0.01"
+        @update:modelValue="emit"
+      />
+      <SliderRow
+        label="High Gain"
+        v-model="params.hf_high_gain"
+        :min="1.00" :max="5.00" :step="0.01"
+        @update:modelValue="emit"
+      />
+    </template>
+    <template v-else-if="selected.type === 'wls_filter'">
+      <SliderRow
+        label="Lambda"
+        v-model="params.wls_lambda"
+        :min="0.01" :max="10.00" :step="0.01"
+        @update:modelValue="emit"
+      />
+      <SliderRow
+        label="Alpha"
+        v-model="params.wls_alpha"
+        :min="0.10" :max="5.00" :step="0.01"
+        @update:modelValue="emit"
+      />
+      <SliderRow
+        label="Epsilon"
+        v-model="params.wls_epsilon"
+        :min="0.000001" :max="0.01"
+        :logarithmic="true"
+        @update:modelValue="emit"
+      />
+    </template>
+    <template v-else-if="selected.type === 'anisotropic_diffusion'">
+      <SliderRow
+        label="Iterations"
+        v-model="params.ad_iterations"
+        :min="1" :max="100" :step="1"
+        @update:modelValue="emit"
+      />
+      <SliderRow
+        label="Kappa"
+        v-model="params.ad_kappa"
+        :min="1.00" :max="100.00" :step="0.10"
+        @update:modelValue="emit"
+      />
+      <SliderRow
+        label="Gamma"
+        v-model="params.ad_gamma"
+        :min="0.01" :max="0.25" :step="0.01"
+        @update:modelValue="emit"
+      />
+    </template>
+    <template v-else-if="selected.type === 'guided_filter'">
+      <SliderRow
+        label="Radius"
+        v-model="params.gf_radius"
+        :min="1" :max="128" :step="1"
+        @update:modelValue="emit"
+      />
+      <SliderRow
+        label="Epsilon"
+        v-model="params.gf_epsilon"
+        :min="0.000001" :max="0.1"
+        :logarithmic="true"
+        @update:modelValue="emit"
+      />
+    </template>
     <template v-else-if="selected.type === 'rescale_intensity'">
       <SliderRow
         label="In Low"
@@ -155,6 +231,17 @@ const params = reactive({
   out_low: 0,
   out_high: 65535,
   epsilon: 0.000001,
+  hf_sigma: 10.0,
+  hf_low_gain: 0.5,
+  hf_high_gain: 1.5,
+  wls_lambda: 1.0,
+  wls_alpha: 1.2,
+  wls_epsilon: 0.0001,
+  ad_iterations: 10,
+  ad_kappa: 30.0,
+  ad_gamma: 0.15,
+  gf_radius: 8,
+  gf_epsilon: 0.01,
 })
 
 watch(
@@ -181,6 +268,21 @@ watch(
       params.sigma = sel.params?.sigma ?? 1.5
     } else if (sel.type === 'median_blur') {
       params.size = sel.params?.size ?? 3
+    } else if (sel.type === 'homomorphic_filter') {
+      params.hf_sigma = sel.params?.sigma ?? 10.0
+      params.hf_low_gain = sel.params?.low_gain ?? 0.5
+      params.hf_high_gain = sel.params?.high_gain ?? 1.5
+    } else if (sel.type === 'wls_filter') {
+      params.wls_lambda = sel.params?.lambda_value ?? 1.0
+      params.wls_alpha = sel.params?.alpha ?? 1.2
+      params.wls_epsilon = sel.params?.epsilon ?? 0.0001
+    } else if (sel.type === 'anisotropic_diffusion') {
+      params.ad_iterations = sel.params?.iterations ?? 10
+      params.ad_kappa = sel.params?.kappa ?? 30.0
+      params.ad_gamma = sel.params?.gamma ?? 0.15
+    } else if (sel.type === 'guided_filter') {
+      params.gf_radius = sel.params?.radius ?? 8
+      params.gf_epsilon = sel.params?.epsilon ?? 0.01
     } else if (sel.type === 'rescale_intensity') {
       params.in_low = sel.params?.in_low ?? 0
       params.in_high = sel.params?.in_high ?? 65535
@@ -224,6 +326,33 @@ function emit() {
       break
     case 'median_blur':
       payload = { size: Math.max(1, Math.round(params.size)) }
+      break
+    case 'homomorphic_filter':
+      payload = {
+        sigma: params.hf_sigma,
+        low_gain: params.hf_low_gain,
+        high_gain: params.hf_high_gain,
+      }
+      break
+    case 'wls_filter':
+      payload = {
+        lambda_value: params.wls_lambda,
+        alpha: params.wls_alpha,
+        epsilon: params.wls_epsilon,
+      }
+      break
+    case 'anisotropic_diffusion':
+      payload = {
+        iterations: Math.max(1, Math.round(params.ad_iterations)),
+        kappa: params.ad_kappa,
+        gamma: params.ad_gamma,
+      }
+      break
+    case 'guided_filter':
+      payload = {
+        radius: Math.max(1, Math.round(params.gf_radius)),
+        epsilon: params.gf_epsilon,
+      }
       break
     case 'rescale_intensity':
       payload = {

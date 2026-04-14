@@ -49,6 +49,26 @@ export const WORKFLOW_NODE_TYPES = {
     kind: 'unary',
     params: { size: 3 },
   },
+  homomorphic_filter: {
+    label: 'Homomorphic Filter',
+    kind: 'unary',
+    params: { sigma: 10.0, low_gain: 0.5, high_gain: 1.5 },
+  },
+  wls_filter: {
+    label: 'WLS Filter',
+    kind: 'unary',
+    params: { lambda_value: 1.0, alpha: 1.2, epsilon: 0.0001 },
+  },
+  anisotropic_diffusion: {
+    label: 'Anisotropic Diffusion',
+    kind: 'unary',
+    params: { iterations: 10, kappa: 30.0, gamma: 0.15 },
+  },
+  guided_filter: {
+    label: 'Guided Filter',
+    kind: 'unary',
+    params: { radius: 8, epsilon: 0.01 },
+  },
   rescale_intensity: {
     label: 'Rescale Intensity',
     kind: 'unary',

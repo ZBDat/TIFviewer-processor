@@ -85,6 +85,26 @@ const OPTIONS = [
     params: { size: 3 },
   },
   {
+    type: 'homomorphic_filter',
+    label: 'Homomorphic Filter',
+    params: { sigma: 10.0, low_gain: 0.5, high_gain: 1.5 },
+  },
+  {
+    type: 'wls_filter',
+    label: 'WLS Filter',
+    params: { lambda_value: 1.0, alpha: 1.2, epsilon: 0.0001 },
+  },
+  {
+    type: 'anisotropic_diffusion',
+    label: 'Anisotropic Diffusion',
+    params: { iterations: 10, kappa: 30.0, gamma: 0.15 },
+  },
+  {
+    type: 'guided_filter',
+    label: 'Guided Filter',
+    params: { radius: 8, epsilon: 0.01 },
+  },
+  {
     type: 'rescale_intensity',
     label: 'Rescale Intensity',
     params: { in_low: 0, in_high: 65535, out_low: 0, out_high: 65535 },
